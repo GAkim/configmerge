@@ -21,13 +21,14 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const WebpackPwaManifest = require('webpack-pwa-manifest');
 const autoprefixer = require('autoprefixer');
 
-const FallbackPlugin = require('./FallbackPlugin');
+const FallbackPlugin = require('./Extensibility/plugins/FallbackPlugin');
 
 const webmanifestConfig = require('./webmanifest.config');
 const { getBabelConfig } = require('./babel.config');
 
 const projectRoot = path.resolve(__dirname, '..', '..');
-const { parentRoot } = require(path.resolve(projectRoot, 'scandipwa.json'));
+const fallbackThemeSpecifier = path.relative(path.resolve(projectRoot, '../..'), projectRoot);
+const { parentTheme = '' } = require(path.resolve(projectRoot, 'scandipwa.json'));
 
 const DEVELOPMENT = 'development';
 const CORE = 'core';
@@ -36,6 +37,11 @@ const config = (env, argv) => {
     const magentoRoot = env.BUILD_MODE === DEVELOPMENT
         ? path.resolve(projectRoot, '..', '..', '..', '..', '..')
         : path.resolve(projectRoot, '..', '..');
+
+    const parentRoot = parentTheme
+        ? path.resolve(magentoRoot, 'app/design/frontend', parentTheme)
+        : undefined;
+
     const fallbackRoot = path.resolve(magentoRoot, 'vendor', 'scandipwa', 'source');
 
     return {
@@ -46,11 +52,17 @@ const config = (env, argv) => {
                 '.scss',
                 '*'
             ],
-            plugins: [
-                new FallbackPlugin({
-                    fallbackRoot, projectRoot, parentRoot
-                })
-            ],
+            plugins: env.BUILD_MODE !== CORE
+                ?   [
+                        new FallbackPlugin({
+                            projectRoot,
+                            fallbackRoot,
+                            fallbackThemeSpecifier,
+                            parentRoot,
+                            parentThemeSpecifier: parentTheme
+                        })
+                    ]
+                : [],
 
             modules: [
                 path.resolve(projectRoot, 'node_modules'),
@@ -61,7 +73,7 @@ const config = (env, argv) => {
         resolveLoader: {
             modules: [
                 'node_modules',
-                path.resolve(__dirname, 'loaders')
+                path.resolve(__dirname, 'Extensibility', 'loaders')
             ]
         },
 
@@ -99,7 +111,7 @@ const config = (env, argv) => {
                                 magentoRoot,
                                 projectRoot,
                                 importAggregator: 'extensions',
-                                pathFilterCondition: path => !!path.match(/\/src\/scandipwa\/app\//)
+                                pathFilterCondition: path => !!path.match(/\/app\/plugin\//)
                             }
                         }
                     ]
@@ -113,7 +125,7 @@ const config = (env, argv) => {
                                 magentoRoot,
                                 projectRoot,
                                 importAggregator: 'extensions',
-                                pathFilterCondition: path => !!path.match(/\/src\/scandipwa\/sw\//)
+                                pathFilterCondition: path => !!path.match(/\/sw\/plugin\//)
                             }
                         }
                     ]
@@ -184,7 +196,7 @@ const config = (env, argv) => {
             inline: true,
             hot: true,
             host: '0.0.0.0',
-            public: 'xstoys.local',
+            public: 'scandipwa.local',
             allowedHosts: [
                 '.local'
             ]
@@ -209,16 +221,16 @@ const config = (env, argv) => {
 
             new webpack.ProvidePlugin({
                 __: path.join(__dirname, 'TranslationFunction'),
-                middleware: path.join(__dirname, 'Middleware'),
-                ExtensiblePureComponent: path.join(__dirname, 'ExtensibleClasses', 'ExtensiblePureComponent'),
-                ExtensibleComponent: path.join(__dirname, 'ExtensibleClasses', 'ExtensibleComponent'),
-                ExtensibleClass: path.join(__dirname, 'ExtensibleClasses', 'ExtensibleClass'),
-                ExtensibleUnstatedContainer: path.join(__dirname, 'ExtensibleClasses', 'ExtensibleUnstatedContainer'),
+                middleware: path.join(__dirname, 'Extensibility', 'Middleware'),
+                ExtensiblePureComponent: path.join(__dirname, 'Extensibility', 'ExtensibleClasses', 'ExtensiblePureComponent'),
+                ExtensibleComponent: path.join(__dirname, 'Extensibility', 'ExtensibleClasses', 'ExtensibleComponent'),
+                ExtensibleClass: path.join(__dirname, 'Extensibility', 'ExtensibleClasses', 'ExtensibleClass'),
+                ExtensibleUnstatedContainer: path.join(__dirname, 'Extensibility', 'ExtensibleClasses', 'ExtensibleUnstatedContainer'),
                 React: 'react'
             }),
 
             new HtmlWebpackPlugin({
-                template: path.resolve(projectRoot, 'src', 'public', 'index.xs.development.html'),
+                template: path.resolve(projectRoot, 'src', 'public', 'index.development.html'),
                 filename: 'index.html',
                 inject: false,
                 publicPath: '/',
