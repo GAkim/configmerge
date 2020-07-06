@@ -3,16 +3,19 @@ const generateGetHandler = require('../Middleware/generateGetHandler');
 
 module.exports = function proxyInstance(context) {
     const { __namespace__ } = Object.getPrototypeOf(context);
+    const shouldProxyAnyway = () => {
+        return !![
+            // Because they are instantiated on export
+            __namespace__.includes('Query'),
+            __namespace__.includes('Dispatcher'),
+            __namespace__.includes('Util'),
+        ].find(Boolean);
+    }
+
     const namespacePlugins = globalThis.plugins?.[__namespace__]?.['member-function'];
-    /*
-    The below 3 lines are present in core SWPWA, but they were commented out, as they caused things to occasionally
-     break unpredictably.
-     The issue is that in some cases, instances are created before plugins are loaded. As a result, this check fails
-      and the function assumes that there are no plugins.
-     */
-    // if (!namespacePlugins) {
-    //     return;
-    // }
+    if (!namespacePlugins && !shouldProxyAnyway()) {
+        return;
+    }
 
     return new Proxy(context, {
         get: generateGetHandler('instance', __namespace__)
